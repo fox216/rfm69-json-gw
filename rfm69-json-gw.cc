@@ -43,18 +43,7 @@ void loop() {
     		Serial.println("parseObject() failed");
     		return;
   		}
-  		/*
-			Serial Msg Template
-			{
-				node: "<target Node ID>", <byte>
-				meth: "<Message Type",  <byte>
-				type: "<Data Type>", <byte>
-				data: [
-					<Message Type Specific Content>
-				]
-			}
 
-  		*/
   		// Encode data from serial port to an RFM69 message
   		nodeMsg.NodeID = json_in["node"];
   		nodeMsg.Method = json_in["meth"];
@@ -70,7 +59,7 @@ void loop() {
 		switch(nodeMsg.PayloadType) {
 		case 1:
 			msg_1.key = json_in["payload"][0];
-			msg_1.value = json_in["payload"][1];
+			msg_1.value = (byte)json_in["payload"][1];
 			Serial.print("key: ");
 			Serial.println(msg_1.key);
 			Serial.print("value: ");
@@ -86,7 +75,7 @@ void loop() {
 		break;
 		case 3:
 			msg_3.key = json_in["payload"][0];
-			msg_3.value = (bool)json_in["payload"][1];
+			msg_3.value = (int)json_in["payload"][1];
 			Serial.print("key: ");
 			Serial.println(msg_3.key);
 			Serial.print("value: ");
@@ -94,7 +83,7 @@ void loop() {
 		break;
 		case 4:
 			msg_4.key = json_in["payload"][0];
-			msg_4.value = (int)json_in["payload"][1];
+			msg_4.value = (const char*)json_in["payload"][1];
 			Serial.print("key: ");
 			Serial.println(msg_4.key);
 			Serial.print("value: ");
@@ -102,7 +91,7 @@ void loop() {
 		break;
 		case 5:
 			msg_5.key = json_in["payload"][0];
-			msg_5.value = (const char*)json_in["payload"][1];
+			msg_5.value = (long)json_in["payload"][1];
 			Serial.print("key: ");
 			Serial.println(msg_5.key);
 			Serial.print("value: ");
@@ -110,7 +99,7 @@ void loop() {
 		break;
 		case 6:
 			msg_6.key = json_in["payload"][0];
-			msg_6.value = (long)json_in["payload"][1];
+			msg_6.value = (double)json_in["payload"][1];
 			Serial.print("key: ");
 			Serial.println(msg_6.key);
 			Serial.print("value: ");
@@ -118,7 +107,7 @@ void loop() {
 		break;
 		case 7:
 			msg_7.key = json_in["payload"][0];
-			msg_7.value = (double)json_in["payload"][1];
+			msg_7.value = (float)json_in["payload"][1];
 			Serial.print("key: ");
 			Serial.println(msg_7.key);
 			Serial.print("value: ");
@@ -149,12 +138,156 @@ void loop() {
   		// Parse RFM69 Message and send to Serial
   		StaticJsonBuffer<JSON_BUFFER_SZ> jsonBuffer;
 		JsonObject& json_out = jsonBuffer.createObject();
-		// if ( radio.receiveDone() ) {
-		// 	// Data received from radio
-		// 	// Process date / forward to serial port
-		// 	payload = *(Payload*)radio.DATA;
+		if ( radio.receiveDone() ) {
+			// Data received from radio
+			// Process date / forward to serial port
+			payload = *(Payload*)radio.DATA;
 
+			StaticJsonBuffer<200> jsonBuffer;
+
+			JsonObject& json_out = jsonBuffer.createObject();
+
+
+			msg.NodeID = 123;
+			msg.Method = 2;
+			msg.TypeID = 200;
+			msg.DataMap = "bbLfiIL"; // Byte, Byte, Unsigned Long, float, integer, Unsigned Integer
+
+			json_out["node"] = msg.NodeID;
+			json_out["meth"] = msg.Method;
+			json_out["type"] = msg.TypeID;
+			json_out["map"] = msg.DataMap;
+
+			sampleData.b1 = 42;
+			sampleData.b2 = 43;
+			sampleData.uL1 = 999999;
+			sampleData.f1 = 175.06;
+			sampleData.i1 = -678;
+			sampleData.uI1 = loopCount;
+			sampleData.uL2 = millis();
+
+			msg.MsgSize = sizeof(sampleData);
+			Serial.print("Message Size: ");
+			Serial.println(msg.MsgSize);
+
+			memcpy(payloadBuffer, &sampleData, (int)msg.MsgSize);
+			Serial.print("Data Map Size: ");
+			Serial.println( strlen(msg.DataMap) );
+
+			Serial.print("Data Map Value: ");
+			Serial.println( msg.DataMap );
+			int bufferPosition = 0;
+
+			JsonArray& data = json_out.createNestedArray("data");
+			for (int x = 0; x < strlen(msg.DataMap); x++) {
+				//Serial.print("DataMap[");
+				// Serial.print(x);
+				// Serial.print("]: ");
+				// Serial.println(msg.DataMap[x]);
+
+				// Serial.print("BufferPosition: ");
+				// Serial.println(bufferPosition);
+				// Serial.println(payloadBuffer[bufferPosition], HEX);
+				char thisDataMap = msg.DataMap[x];
+
+				if (thisDataMap == 'b') {
+					data.add((byte)payloadBuffer[bufferPosition]);
+					bufferPosition += 1;
+				}
+				else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
+					byte fourByte[4];
+					memcpy(fourByte, &payloadBuffer[bufferPosition], 4);
+
+					if (thisDataMap == 'f') {
+						float castFloat;
+						castFloat = * (float *) fourByte;
+						data.add(castFloat);
+					}
+					if (thisDataMap == 'L') {
+						unsigned long castUlong;
+						castUlong = * (unsigned long *) fourByte;
+						data.add(castUlong);
+					}
+					if (thisDataMap == 'l') {
+						long castLong;
+						castLong = * (long *) fourByte;
+						data.add(castLong);
+					}
+					if (thisDataMap == 'd') {
+						double castDouble;
+						castDouble = * (double *) fourByte;
+						data.add(castDouble);
+					}
+					bufferPosition += 4;
+
+				}
+				else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
+					byte twoByte[2];
+					memcpy(twoByte, &payloadBuffer[bufferPosition], 2);
+
+					if (thisDataMap == 'i') {
+						int castInt;
+						castInt = * (int *) twoByte;
+						data.add(castInt);
+					}
+					if (thisDataMap == 'I') {
+						unsigned int castUint;
+						castUint = * (unsigned int *) twoByte;
+						data.add(castUint);
+					}
+					if (thisDataMap == 'w') {
+						word castWord;
+						castWord = * (word *) twoByte;
+						data.add(castWord);
+					}
+
+					bufferPosition += 2;
+				} else {
+					Serial.print("Undefined: ");
+					Serial.println(msg.DataMap[x]);
+				}	
+
+		}
+
+		// {
+		// 	"NodeID": Byte[1],
+		// 	"Method": Byte[1],
+		// 	"PayloadType": Byte[1];
+		// 	"MsgSize": Byte[1]
+		// 	"Data": 
+		// 		[{1}
+		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
+		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
+		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
+		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
+		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
+		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
+		// 		]
+		// } Max Long = 
+		// {
+		// 	"NodeID": Byte[1],
+		// 	"Method": Byte[1],
+		// 	"PayloadType": Byte[1];
+		// 	"MsgSize": Byte[1]
+		// 	"Data": 
+		// 		[{1}
+		// 			"dataType": Byte[1], 
+		// 			"Data": Byte[Max4],					
+		// 			"dataType": Byte[1], 
+		// 			"Data": Byte[Max4],
+		// 			"dataType": Byte[1], 
+		// 			"Data": Byte[Max4],
+		// 			"dataType": Byte[1], 
+		// 			"Data": Byte[Max4],
+		// 			"dataType": Byte[1], 
+		// 			"Data": Byte[Max4],
+		// 			"dataType": Byte[1], 
+		// 			"Data": Byte[Max4],
+		// 		]
 		// }
+
+
+
   	}
 }
 
