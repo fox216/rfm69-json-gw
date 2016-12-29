@@ -5,7 +5,6 @@ Change Log
 2016-12-24: Add Serial input
 
 */
-
 #include <ArduinoJson.h>
 #include <RFM69.h>
 #include <SPI.h>
@@ -13,6 +12,8 @@ Change Log
 #include <NodeMsg.h>
 #include <GatewayConf.h>
 // Initialize Radio
+#define DEBUG_SERIAL
+
 RFM69 radio;
 
 // Note:
@@ -21,20 +22,27 @@ RFM69 radio;
 char SerialBuffer[SERIAL_BUFFER_SZ];
 byte MsgPayloadBuffer[MAX_PAYLOAD_SIZE];
 int MsgPayloadSz = 0;
+byte payloadBuffer[MAX_PAYLOAD_SIZE];
 
 void setup() {
 	// Setup Serial port
 	Serial.begin(SERIAL_BAUD);
 	// Wait for serial to start
 	while( ! Serial ) {}
-	// Setup RFM69 Radio
-	// radio.initialize(FREQUENCY, NODEID, NETWORKID);
+	// //Setup RFM69 Radio
+	radio.initialize(FREQUENCY, NODEID, NETWORKID);
 	// // Wait for Radio to start
-	// while(! radio) {} // Unknown 
+	// //while(! radio) {} // Unknown 
 	// // Setup RFM69 Encryption
-	// radio.encrypt(KEY);
+	radio.encrypt(KEY);
 }
 
+void Blink(byte PIN, int DELAY_MS) {
+  pinMode(PIN, OUTPUT);
+  digitalWrite(PIN,HIGH);
+  delay(DELAY_MS);
+  digitalWrite(PIN,LOW);
+}
 
 void loop() {
   	if ( Serial.available() > 0 ) {
@@ -58,6 +66,8 @@ void loop() {
 			"map":"bbLfiIL",
 			"data":[42,43,999999,175.06,-678,48197,48197000]
 			}
+			// Sample test
+			echo '{"node":"14","meth":2,"type":6,"map":"bLff","data":[2,250445,321.45,88.45]}' > /dev/ttyLPL
 
   		*/
 
@@ -66,7 +76,7 @@ void loop() {
   		nodeMsg.TypeID = json_in["type"];
   		nodeMsg.PayloadDataMap = json_in["map"];
 
-
+  		#ifdef DEBUG
 		Serial.print("Node: ");
 		Serial.println(nodeMsg.NodeID);
 		Serial.print("Method: ");
@@ -75,290 +85,209 @@ void loop() {
 		Serial.println(nodeMsg.TypeID);
 		Serial.print("Map: ");
 		Serial.println(nodeMsg.PayloadDataMap);
-
+		#endif
 		// Decode data from json data array 
-		MsgPayloadSz = sizeof(json_in["data"]);
-		Serial.print("Json Payload Size: ");
-		Serial.println(MsgPayloadSz);
-
+		// MsgPayloadSz = sizeof(json_in["data"]);
+		// Serial.print("Json Payload Size: ");
+		// Serial.println(MsgPayloadSz);
+		int msgPayloadOffset = 0;
+		byte outBuffer[MAX_PAYLOAD_SIZE];
 		// read json metadata (PayloadDataMap) write objects to payload byte array
 		for (int x = 0; x < strlen(nodeMsg.PayloadDataMap); x++) {
 			char thisDataMap = nodeMsg.PayloadDataMap[x];
-			Serial.print("Map Inspect -> ");
-			Serial.println(thisDataMap);
-			
+  			#ifdef DEBUG
+				Serial.print("Map Inspect -> ");
+				Serial.println(thisDataMap);
+			#endif
 			if ( thisDataMap == 'b') {
-				Serial.print("Byte Data: ");
-				Serial.println((byte)json_in["data"][x]);
-				nodeMsg.MsgPayload[x] = (byte)json_in["data"][x];
+  				#ifdef DEBUG
+					Serial.print("Byte Data: ");
+					Serial.println((byte)json_in["data"][x]);
+				#endif
+				nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][x];
+				msgPayloadOffset += 1;
 			} 
 			else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
 				if ( thisDataMap == 'L') {
+					#ifdef DEBUG
 					Serial.print("uLong Data: ");
 					Serial.println((unsigned long)json_in["data"][x]);
-					nodeMsg.MsgPayload[x] = (unsigned long)json_in["data"][x];
+					#endif
+					ByteConvert.L = (unsigned long)json_in["data"][x];
 				} else if ( thisDataMap == 'l') {
-					Serial.print("Long Data: ");
-					Serial.println((long)json_in["data"][x]);
-					nodeMsg.MsgPayload[x] = (long)json_in["data"][x];
+					#ifdef DEBUG
+						Serial.print("Long Data: ");
+						Serial.println((long)json_in["data"][x]);
+					#endif
+					ByteConvert.l = (long)json_in["data"][x];
 				} else if ( thisDataMap == 'f') {
-					Serial.print("Float Data: ");
-					Serial.println((float)json_in["data"][x]);
-					nodeMsg.MsgPayload[x] = (float)json_in["data"][x];
+					#ifdef DEBUG
+						Serial.print("Float Data: ");
+						Serial.println((float)json_in["data"][x]);
+					#endif
+					ByteConvert.f = (float)json_in["data"][x];
 				} else if ( thisDataMap == 'd') {
-					Serial.print("Double Data: ");
-					Serial.println((double)json_in["data"][x]);
-					nodeMsg.MsgPayload[x] = (double)json_in["data"][x];
-				} 			
+					#ifdef DEBUG
+						Serial.print("Double Data: ");
+						Serial.println((double)json_in["data"][x]);
+					#endif
+					ByteConvert.d = (double)json_in["data"][x];
+				}
+				// Write data to payload
+				for (int x = 0; x < 4; x++) {
+					nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.B[x];
+				} 		
+				msgPayloadOffset += 4;	
 			} else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
 				if ( thisDataMap == 'i') {
-					Serial.print("int Data: ");
-					Serial.println((int)json_in["data"][x]);
-					nodeMsg.MsgPayload[x] = (int)json_in["data"][x];
+					#ifdef DEBUG
+						Serial.print("int Data: ");
+						Serial.println((int)json_in["data"][x]);
+					#endif
+					ByteConvert.i = (int)json_in["data"][x];
+					//nodeMsg.MsgPayload[msgPayloadOffset] = (int)json_in["data"][x];
 				} else if (thisDataMap == 'I') {
-					Serial.print("uInt Data: ");
-					Serial.println((unsigned int)json_in["data"][x]);
-					nodeMsg.MsgPayload[x] = (unsigned int)json_in["data"][x];					
+					#ifdef DEBUG
+						Serial.print("uInt Data: ");
+						Serial.println((unsigned int)json_in["data"][x]);
+					#endif
+					ByteConvert.I = (unsigned int)json_in["data"][x];
+					// nodeMsg.MsgPayload[msgPayloadOffset] = (unsigned int)json_in["data"][x];					
 				} else if (thisDataMap == 'w') {
-					Serial.print("Word Data: ");
-					Serial.println((word)json_in["data"][x]);
-					nodeMsg.MsgPayload[x] = (word)json_in["data"][x];					
+					#ifdef DEBUG
+						Serial.print("Word Data: ");
+						Serial.println((word)json_in["data"][x]);
+					#endif
+					ByteConvert.w = (word)json_in["data"][x];
+					// nodeMsg.MsgPayload[msgPayloadOffset] = (word)json_in["data"][x];					
 				}
+				for (int x = 0; x < 2; x++) {
+					nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.b[x];
+				} 
+				msgPayloadOffset +=2;
 			}
 		}
-		// switch(nodeMsg.TypeID) {
-		// case 1:
-		// 	msg_1.key = json_in["payload"][0];
-		// 	msg_1.value = (byte)json_in["payload"][1];
-		// 	Serial.print("key: ");
-		// 	Serial.println(msg_1.key);
-		// 	Serial.print("value: ");
-		// 	Serial.println(msg_1.value);
-		// break;
-		// case 2:
-		// 	msg_2.key = json_in["payload"][0];
-		// 	msg_2.value = json_in["payload"][1];
-		// 	Serial.print("key: ");
-		// 	Serial.println(msg_2.key);
-		// 	Serial.print("value: ");
-		// 	Serial.println(msg_2.value);
-		// break;
-		// case 3:
-		// 	msg_3.key = json_in["payload"][0];
-		// 	msg_3.value = (int)json_in["payload"][1];
-		// 	Serial.print("key: ");
-		// 	Serial.println(msg_3.key);
-		// 	Serial.print("value: ");
-		// 	Serial.println(msg_3.value);
-		// break;
-		// case 4:
-		// 	msg_4.key = json_in["payload"][0];
-		// 	msg_4.value = (const char*)json_in["payload"][1];
-		// 	Serial.print("key: ");
-		// 	Serial.println(msg_4.key);
-		// 	Serial.print("value: ");
-		// 	Serial.println(msg_4.value);
-		// break;
-		// case 5:
-		// 	msg_5.key = json_in["payload"][0];
-		// 	msg_5.value = (long)json_in["payload"][1];
-		// 	Serial.print("key: ");
-		// 	Serial.println(msg_5.key);
-		// 	Serial.print("value: ");
-		// 	Serial.println(msg_5.value);
-		// break;
-		// case 6:
-		// 	msg_6.key = json_in["payload"][0];
-		// 	msg_6.value = (double)json_in["payload"][1];
-		// 	Serial.print("key: ");
-		// 	Serial.println(msg_6.key);
-		// 	Serial.print("value: ");
-		// 	Serial.println(msg_6.value);
-		// break;
-		// case 7:
-		// 	msg_7.key = json_in["payload"][0];
-		// 	msg_7.value = (float)json_in["payload"][1];
-		// 	Serial.print("key: ");
-		// 	Serial.println(msg_7.key);
-		// 	Serial.print("value: ");
-		// 	Serial.println(msg_7.value);
-		// break;
-		// case 8:
-		// 	msg_8.key = json_in["payload"][0];
-		// 	msg_8.value = (float)json_in["payload"][1];
-		// 	Serial.print("key: ");
-		// 	Serial.println(msg_8.key);
-		// 	Serial.print("value: ");
-		// 	Serial.println(msg_8.value);
-		// break;
-		// default:
-		// 	StaticJsonBuffer<JSON_BUFFER_SZ> jsonBuffer;
-		// 	JsonObject& json_out = jsonBuffer.createObject();
-		// 	json_out["GWError"] = 2;
-		// 	json_out["Type"] = nodeMsg.PayloadType;
-		// 	json_out.printTo(Serial);
-		// 	Serial.println();
-		// break;
-		// }
+		// Send data to node
 
+		radio.send(nodeMsg.NodeID, (const void*)(&nodeMsg), MAX_NETWORK_SIZE);
+		Blink(LED, 10);
+		delay(100);
+		Blink(LED, 10);
 
+		// (DEBUG_SERIAL) Print input received from serial port 
+		#ifdef DEBUG_SERIAL
+		json_in.printTo(Serial);
+		Serial.println();
+		delay(10);
+		#endif
+  	} else {
+  		// Process incoming RFM69 data
+  		// Parse RFM69 Message and send to Serial
+  		StaticJsonBuffer<JSON_BUFFER_SZ> jsonBuffer;
+		JsonObject& json_out = jsonBuffer.createObject();
+		if ( radio.receiveDone() ) {
+			// Data received from radio
+			// Process date / forward to serial port
+			// Copy contents of message into _NodeMsg structure (See NodeMsg.h)
+			nodeMsg = *(_NodeMsg*)radio.DATA;
 
-  	//} 
-  // 	else {
-  // 		// Process incoming RFM69 data
-  // 		// Parse RFM69 Message and send to Serial
-  // 		StaticJsonBuffer<JSON_BUFFER_SZ> jsonBuffer;
-		// JsonObject& json_out = jsonBuffer.createObject();
-		// if ( radio.receiveDone() ) {
-		// 	// Data received from radio
-		// 	// Process date / forward to serial port
-		// 	payload = *(Payload*)radio.DATA;
+			// Clear / Create JSON parsing buffer for output
+			StaticJsonBuffer<200> jsonBuffer;
+			JsonObject& json_out = jsonBuffer.createObject();
 
-		// 	StaticJsonBuffer<200> jsonBuffer;
+			// Encode Message content tp JSON
+			json_out["node"] = nodeMsg.NodeID;
+			json_out["meth"] = nodeMsg.Method;
+			json_out["type"] = nodeMsg.TypeID;
+			json_out["map"] = nodeMsg.PayloadDataMap;
 
-		// 	JsonObject& json_out = jsonBuffer.createObject();
+			// Copy contents of node msg into array for processing. 
+			// Note this step could be skipped to save memory later...
+			memcpy(payloadBuffer, &nodeMsg.MsgPayload, MAX_PAYLOAD_SIZE);
+			
+			// Debug statements
+			#ifdef DEBUG
+			Serial.print("Data Map Size: ");
+			Serial.println( strlen(nodeMsg.PayloadDataMap) );
+			Serial.print("Data Map Value: ");
+			Serial.println( nodeMsg.PayloadDataMap );
+			#endif
+			
+			// payloadBuffer (MsgPayload) array position pointer///
+			int bufferPosition = 0;
 
+			// Create json data array for storing decoded contents of payload
+			JsonArray& data = json_out.createNestedArray("data");
+			for (int x = 0; x < strlen(nodeMsg.PayloadDataMap); x++) {
+				#ifdef DEBUG
+				Serial.print("DataMap[");
+				Serial.print(x);
+				Serial.print("]: ");
+				Serial.println(nodeMsg.DataMap[x]);
+				Serial.print("BufferPosition: ");
+				Serial.println(bufferPosition);
+				Serial.println(payloadBuffer[bufferPosition], HEX);
+				#endif
+				
+				// Store current mapping character
+				char thisDataMap = nodeMsg.PayloadDataMap[x];
 
-		// 	msg.NodeID = 123;
-		// 	msg.Method = 2;
-		// 	msg.TypeID = 200;
-		// 	msg.DataMap = "bbLfiIL"; // Byte, Byte, Unsigned Long, float, integer, Unsigned Integer
+				if (thisDataMap == 'b') {
+					data.add((byte)payloadBuffer[bufferPosition]);
+					bufferPosition += 1;
+				}
+				else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
+					byte fourByte[4];
+					memcpy(fourByte, &payloadBuffer[bufferPosition], 4);
 
-		// 	json_out["node"] = msg.NodeID;
-		// 	json_out["meth"] = msg.Method;
-		// 	json_out["type"] = msg.TypeID;
-		// 	json_out["map"] = msg.DataMap;
+					if (thisDataMap == 'f') {
+						float castFloat;
+						castFloat = * (float *) fourByte;
+						data.add(castFloat);
+					}
+					if (thisDataMap == 'L') {
+						unsigned long castUlong;
+						castUlong = * (unsigned long *) fourByte;
+						data.add(castUlong);
+					}
+					if (thisDataMap == 'l') {
+						long castLong;
+						castLong = * (long *) fourByte;
+						data.add(castLong);
+					}
+					if (thisDataMap == 'd') {
+						double castDouble;
+						castDouble = * (double *) fourByte;
+						data.add(castDouble);
+					}
+					bufferPosition += 4;
+				}
+				else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
+					byte twoByte[2];
+					memcpy(twoByte, &payloadBuffer[bufferPosition], 2);
 
-		// 	sampleData.b1 = 42;
-		// 	sampleData.b2 = 43;
-		// 	sampleData.uL1 = 999999;
-		// 	sampleData.f1 = 175.06;
-		// 	sampleData.i1 = -678;
-		// 	sampleData.uI1 = loopCount;
-		// 	sampleData.uL2 = millis();
-
-		// 	msg.MsgSize = sizeof(sampleData);
-		// 	Serial.print("Message Size: ");
-		// 	Serial.println(msg.MsgSize);
-
-		// 	memcpy(payloadBuffer, &sampleData, (int)msg.MsgSize);
-		// 	Serial.print("Data Map Size: ");
-		// 	Serial.println( strlen(msg.DataMap) );
-
-		// 	Serial.print("Data Map Value: ");
-		// 	Serial.println( msg.DataMap );
-		// 	int bufferPosition = 0;
-
-		// 	JsonArray& data = json_out.createNestedArray("data");
-		// 	for (int x = 0; x < strlen(msg.DataMap); x++) {
-		// 		//Serial.print("DataMap[");
-		// 		// Serial.print(x);
-		// 		// Serial.print("]: ");
-		// 		// Serial.println(msg.DataMap[x]);
-
-		// 		// Serial.print("BufferPosition: ");
-		// 		// Serial.println(bufferPosition);
-		// 		// Serial.println(payloadBuffer[bufferPosition], HEX);
-		// 		char thisDataMap = msg.DataMap[x];
-
-		// 		if (thisDataMap == 'b') {
-		// 			data.add((byte)payloadBuffer[bufferPosition]);
-		// 			bufferPosition += 1;
-		// 		}
-		// 		else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
-		// 			byte fourByte[4];
-		// 			memcpy(fourByte, &payloadBuffer[bufferPosition], 4);
-
-		// 			if (thisDataMap == 'f') {
-		// 				float castFloat;
-		// 				castFloat = * (float *) fourByte;
-		// 				data.add(castFloat);
-		// 			}
-		// 			if (thisDataMap == 'L') {
-		// 				unsigned long castUlong;
-		// 				castUlong = * (unsigned long *) fourByte;
-		// 				data.add(castUlong);
-		// 			}
-		// 			if (thisDataMap == 'l') {
-		// 				long castLong;
-		// 				castLong = * (long *) fourByte;
-		// 				data.add(castLong);
-		// 			}
-		// 			if (thisDataMap == 'd') {
-		// 				double castDouble;
-		// 				castDouble = * (double *) fourByte;
-		// 				data.add(castDouble);
-		// 			}
-		// 			bufferPosition += 4;
-
-		// 		}
-		// 		else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
-		// 			byte twoByte[2];
-		// 			memcpy(twoByte, &payloadBuffer[bufferPosition], 2);
-
-		// 			if (thisDataMap == 'i') {
-		// 				int castInt;
-		// 				castInt = * (int *) twoByte;
-		// 				data.add(castInt);
-		// 			}
-		// 			if (thisDataMap == 'I') {
-		// 				unsigned int castUint;
-		// 				castUint = * (unsigned int *) twoByte;
-		// 				data.add(castUint);
-		// 			}
-		// 			if (thisDataMap == 'w') {
-		// 				word castWord;
-		// 				castWord = * (word *) twoByte;
-		// 				data.add(castWord);
-		// 			}
-
-		// 			bufferPosition += 2;
-		// 		} else {
-		// 			Serial.print("Undefined: ");
-		// 			Serial.println(msg.DataMap[x]);
-		// 		}	
-
-		// }
-
-		// {
-		// 	"NodeID": Byte[1],
-		// 	"Method": Byte[1],
-		// 	"PayloadType": Byte[1];
-		// 	"MsgSize": Byte[1]
-		// 	"Data": 
-		// 		[{1}
-		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
-		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
-		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
-		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
-		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
-		// 			[{1} "dataType": Byte[1], "Data": Byte[Max4]],
-		// 		]
-		// } Max Long = 
-		// {
-		// 	"NodeID": Byte[1],
-		// 	"Method": Byte[1],
-		// 	"PayloadType": Byte[1];
-		// 	"MsgSize": Byte[1]
-		// 	"Data": 
-		// 		[{1}
-		// 			"dataType": Byte[1], 
-		// 			"Data": Byte[Max4],					
-		// 			"dataType": Byte[1], 
-		// 			"Data": Byte[Max4],
-		// 			"dataType": Byte[1], 
-		// 			"Data": Byte[Max4],
-		// 			"dataType": Byte[1], 
-		// 			"Data": Byte[Max4],
-		// 			"dataType": Byte[1], 
-		// 			"Data": Byte[Max4],
-		// 			"dataType": Byte[1], 
-		// 			"Data": Byte[Max4],
-		// 		]
-		// }
-
-
-
+					if (thisDataMap == 'i') {
+						int castInt;
+						castInt = * (int *) twoByte;
+						data.add(castInt);
+					}
+					if (thisDataMap == 'I') {
+						unsigned int castUint;
+						castUint = * (unsigned int *) twoByte;
+						data.add(castUint);
+					}
+					if (thisDataMap == 'w') {
+						word castWord;
+						castWord = * (word *) twoByte;
+						data.add(castWord);
+					}
+					bufferPosition += 2;
+				} else {
+					Serial.print("Undefined: ");
+					Serial.println(nodeMsg.PayloadDataMap[x]);
+				}	
+			}
+		}
   	}
 }
 
