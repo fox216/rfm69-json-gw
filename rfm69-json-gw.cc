@@ -68,13 +68,17 @@ void loop() {
 			}
 			// Sample test
 			echo '{"node":"14","meth":2,"type":6,"map":"bLff","data":[2,250445,321.45,88.45]}' > /dev/ttyLPL
+			// Update for marshalling data in array. Encoding types as bytes
+			// Serialized exmaple removing map declaration
+			echo '{"node":"14","meth":2,"type":6,"data":[10,2,41,250445,42,321.45,42,88.45]}' > /dev/ttyLPL			
 
   		*/
+
 
   		nodeMsg.NodeID = json_in["node"];
   		nodeMsg.Method = json_in["meth"];
   		nodeMsg.TypeID = json_in["type"];
-  		nodeMsg.PayloadDataMap = json_in["map"];
+  		// nodeMsg.PayloadDataMap = json_in["map"];
 
   		#ifdef DEBUG
 		Serial.print("Node: ");
@@ -83,90 +87,178 @@ void loop() {
 		Serial.println(nodeMsg.Method);
 		Serial.print("Type: ");
 		Serial.println(nodeMsg.TypeID);
-		Serial.print("Map: ");
-		Serial.println(nodeMsg.PayloadDataMap);
+		// Serial.print("Map: ");
+		// Serial.println(nodeMsg.PayloadDataMap);
 		#endif
+		int msgPayloadOffset = 0;
+		byte JsonDataElement = 0;
+		bool bufferHit = false;
+		//Serial.print("Data Size = ");
+		//Serial.println(sizeof(json_in["data"][0]));
+		 do {
+		 	bufferHit = false;
+		 	
+		 	// fail test
+		 	Serial.print("JsonDataElement = ");
+			Serial.print(JsonDataElement);
+			Serial.print(", Control = ");
+			Serial.println((byte)json_in["data"][JsonDataElement]);
+				 
+		 	if (json_in["data"][JsonDataElement] == 10) {
+		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
+		 		msgPayloadOffset += 1;
+
+		 		// JsonDataElement +=1;
+		 		bufferHit = true;
+		 		// Parse Byte
+ 				Serial.print("Json_Data Byte = ");
+				Serial.println((byte)json_in["data"][JsonDataElement +1]);
+
+		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement +1];
+		 		msgPayloadOffset += 1;
+		 	} else if (json_in["data"][JsonDataElement] == 20 or json_in["data"][JsonDataElement] == 21 or json_in["data"][JsonDataElement] == 22 ) {
+		 		// JsonDataElement +=1;
+		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
+		 		msgPayloadOffset += 1;
+		 		bufferHit = true;
+		 		Serial.println("Decode Int,Uint,Word = ");
+
+		 		if (json_in["data"][JsonDataElement] == 20 ) { 
+		 			Serial.print("Json_Data Int = ");
+					Serial.println((int)json_in["data"][JsonDataElement +1]);
+		 			ByteConvert.i = (int)json_in["data"][JsonDataElement +1];
+		 		} else if (json_in["data"][JsonDataElement] == 21 ) { 
+		 			Serial.print("Json_Data UInt = ");
+					Serial.println((unsigned int)json_in["data"][JsonDataElement +1]);
+		 			ByteConvert.I = (unsigned int)json_in["data"][JsonDataElement +1];
+		 		} else if (json_in["data"][JsonDataElement] == 22 ) {
+		 			Serial.print("Json_Data word = ");
+					Serial.println((word)json_in["data"][JsonDataElement +1]);
+		 		 	ByteConvert.w = (word)json_in["data"][JsonDataElement +1];
+		 		}
+		 		for (int x = 0; x < 2; x++) {
+					nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.b[x];
+				} 		
+				msgPayloadOffset += 2;	
+		 	} else if (json_in["data"][JsonDataElement] == 40 or json_in["data"][JsonDataElement] == 41 or json_in["data"][JsonDataElement] == 42 or json_in["data"][JsonDataElement] == 43 ) {
+		 		// JsonDataElement +=1;
+		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
+		 		msgPayloadOffset += 1;
+		 		bufferHit = true;
+		 		if (json_in["data"][JsonDataElement] == 40 ) {
+		 			Serial.print("Json_Data long = ");
+
+		 			ByteConvert.l = (long)json_in["data"][JsonDataElement+1];
+		 		} else if (json_in["data"][JsonDataElement] == 41 ) {
+		 			Serial.print("Json_Data ulong = ");
+		 			
+		 			ByteConvert.L = (unsigned long)json_in["data"][JsonDataElement+1];
+		 		} else if (json_in["data"][JsonDataElement] == 42 ) {
+		 			Serial.print("Json_Data float = ");
+		 			ByteConvert.f = (float)json_in["data"][JsonDataElement +1];
+		 		} else if (json_in["data"][JsonDataElement] == 43 ) {
+		 			Serial.print("Json_Data double = ");
+		 			ByteConvert.d = (double)json_in["data"][JsonDataElement+1];
+		 		}
+		 		for (int x = 0; x < 4; x++) {
+					nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.B[x];
+				} 		
+				msgPayloadOffset += 4;	
+		 	}
+
+		 	// Read onle even numbered json_in["data"] elements
+		 	JsonDataElement += 2;
+		 	Serial.print("msgPayloadOffset: ");
+		 	Serial.print(msgPayloadOffset);
+		 	Serial.println();
+
+		 } while (bufferHit);
+		// for (int element = 0; element < sizeof(json_in["data"]); element++) {
+
+
+
+		// }
 		// Decode data from json data array 
 		// MsgPayloadSz = sizeof(json_in["data"]);
 		// Serial.print("Json Payload Size: ");
 		// Serial.println(MsgPayloadSz);
-		int msgPayloadOffset = 0;
-		byte outBuffer[MAX_PAYLOAD_SIZE];
-		// read json metadata (PayloadDataMap) write objects to payload byte array
-		for (int x = 0; x < strlen(nodeMsg.PayloadDataMap); x++) {
-			char thisDataMap = nodeMsg.PayloadDataMap[x];
-  			#ifdef DEBUG
-				Serial.print("Map Inspect -> ");
-				Serial.println(thisDataMap);
-			#endif
-			if ( thisDataMap == 'b') {
-  				#ifdef DEBUG
-					Serial.print("Byte Data: ");
-					Serial.println((byte)json_in["data"][x]);
-				#endif
-				nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][x];
-				msgPayloadOffset += 1;
-			} 
-			else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
-				if ( thisDataMap == 'L') {
-					#ifdef DEBUG
-					Serial.print("uLong Data: ");
-					Serial.println((unsigned long)json_in["data"][x]);
-					#endif
-					ByteConvert.L = (unsigned long)json_in["data"][x];
-				} else if ( thisDataMap == 'l') {
-					#ifdef DEBUG
-						Serial.print("Long Data: ");
-						Serial.println((long)json_in["data"][x]);
-					#endif
-					ByteConvert.l = (long)json_in["data"][x];
-				} else if ( thisDataMap == 'f') {
-					#ifdef DEBUG
-						Serial.print("Float Data: ");
-						Serial.println((float)json_in["data"][x]);
-					#endif
-					ByteConvert.f = (float)json_in["data"][x];
-				} else if ( thisDataMap == 'd') {
-					#ifdef DEBUG
-						Serial.print("Double Data: ");
-						Serial.println((double)json_in["data"][x]);
-					#endif
-					ByteConvert.d = (double)json_in["data"][x];
-				}
-				// Write data to payload
-				for (int x = 0; x < 4; x++) {
-					nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.B[x];
-				} 		
-				msgPayloadOffset += 4;	
-			} else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
-				if ( thisDataMap == 'i') {
-					#ifdef DEBUG
-						Serial.print("int Data: ");
-						Serial.println((int)json_in["data"][x]);
-					#endif
-					ByteConvert.i = (int)json_in["data"][x];
-					//nodeMsg.MsgPayload[msgPayloadOffset] = (int)json_in["data"][x];
-				} else if (thisDataMap == 'I') {
-					#ifdef DEBUG
-						Serial.print("uInt Data: ");
-						Serial.println((unsigned int)json_in["data"][x]);
-					#endif
-					ByteConvert.I = (unsigned int)json_in["data"][x];
-					// nodeMsg.MsgPayload[msgPayloadOffset] = (unsigned int)json_in["data"][x];					
-				} else if (thisDataMap == 'w') {
-					#ifdef DEBUG
-						Serial.print("Word Data: ");
-						Serial.println((word)json_in["data"][x]);
-					#endif
-					ByteConvert.w = (word)json_in["data"][x];
-					// nodeMsg.MsgPayload[msgPayloadOffset] = (word)json_in["data"][x];					
-				}
-				for (int x = 0; x < 2; x++) {
-					nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.b[x];
-				} 
-				msgPayloadOffset +=2;
-			}
-		}
+		// int msgPayloadOffset = 0;
+		// byte outBuffer[MAX_PAYLOAD_SIZE];
+		// // read json metadata (PayloadDataMap) write objects to payload byte array
+		// for (int x = 0; x < strlen(nodeMsg.PayloadDataMap); x++) {
+		// 	char thisDataMap = nodeMsg.PayloadDataMap[x];
+  // 			#ifdef DEBUG
+		// 		Serial.print("Map Inspect -> ");
+		// 		Serial.println(thisDataMap);
+		// 	#endif
+		// 	if ( thisDataMap == 'b') {
+  // 				#ifdef DEBUG
+		// 			Serial.print("Byte Data: ");
+		// 			Serial.println((byte)json_in["data"][x]);
+		// 		#endif
+		// 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][x];
+		// 		msgPayloadOffset += 1;
+		// 	} 
+		// 	else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
+		// 		if ( thisDataMap == 'L') {
+		// 			#ifdef DEBUG
+		// 			Serial.print("uLong Data: ");
+		// 			Serial.println((unsigned long)json_in["data"][x]);
+		// 			#endif
+		// 			ByteConvert.L = (unsigned long)json_in["data"][x];
+		// 		} else if ( thisDataMap == 'l') {
+		// 			#ifdef DEBUG
+		// 				Serial.print("Long Data: ");
+		// 				Serial.println((long)json_in["data"][x]);
+		// 			#endif
+		// 			ByteConvert.l = (long)json_in["data"][x];
+		// 		} else if ( thisDataMap == 'f') {
+		// 			#ifdef DEBUG
+		// 				Serial.print("Float Data: ");
+		// 				Serial.println((float)json_in["data"][x]);
+		// 			#endif
+		// 			ByteConvert.f = (float)json_in["data"][x];
+		// 		} else if ( thisDataMap == 'd') {
+		// 			#ifdef DEBUG
+		// 				Serial.print("Double Data: ");
+		// 				Serial.println((double)json_in["data"][x]);
+		// 			#endif
+		// 			ByteConvert.d = (double)json_in["data"][x];
+		// 		}
+		// 		// Write data to payload
+		// 		for (int x = 0; x < 4; x++) {
+		// 			nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.B[x];
+		// 		} 		
+		// 		msgPayloadOffset += 4;	
+		// 	} else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
+		// 		if ( thisDataMap == 'i') {
+		// 			#ifdef DEBUG
+		// 				Serial.print("int Data: ");
+		// 				Serial.println((int)json_in["data"][x]);
+		// 			#endif
+		// 			ByteConvert.i = (int)json_in["data"][x];
+		// 			//nodeMsg.MsgPayload[msgPayloadOffset] = (int)json_in["data"][x];
+		// 		} else if (thisDataMap == 'I') {
+		// 			#ifdef DEBUG
+		// 				Serial.print("uInt Data: ");
+		// 				Serial.println((unsigned int)json_in["data"][x]);
+		// 			#endif
+		// 			ByteConvert.I = (unsigned int)json_in["data"][x];
+		// 			// nodeMsg.MsgPayload[msgPayloadOffset] = (unsigned int)json_in["data"][x];					
+		// 		} else if (thisDataMap == 'w') {
+		// 			#ifdef DEBUG
+		// 				Serial.print("Word Data: ");
+		// 				Serial.println((word)json_in["data"][x]);
+		// 			#endif
+		// 			ByteConvert.w = (word)json_in["data"][x];
+		// 			// nodeMsg.MsgPayload[msgPayloadOffset] = (word)json_in["data"][x];					
+		// 		}
+		// 		for (int x = 0; x < 2; x++) {
+		// 			nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.b[x];
+		// 		} 
+		// 		msgPayloadOffset +=2;
+		// 	}
+		// }
 		// Send data to node
 
 		radio.send(nodeMsg.NodeID, (const void*)(&nodeMsg), MAX_NETWORK_SIZE);
@@ -180,7 +272,9 @@ void loop() {
 		Serial.println();
 		delay(10);
 		#endif
-  	} else {
+  	} 
+  	/*
+  	else {
   		// Process incoming RFM69 data
   		// Parse RFM69 Message and send to Serial
   		StaticJsonBuffer<JSON_BUFFER_SZ> jsonBuffer;
@@ -230,11 +324,11 @@ void loop() {
 				#endif
 				
 
-				/*
-					---
-					Note: Consider updating code to use union instead of memcpy
-					---
-				*/
+				
+					// ---
+					// Note: Consider updating code to use union instead of memcpy
+					// ---
+				
 				// Store current mapping character
 				char thisDataMap = nodeMsg.PayloadDataMap[x];
 
@@ -294,7 +388,9 @@ void loop() {
 				}	
 			}
 		}
+
   	}
+  	*/
 }
 
 

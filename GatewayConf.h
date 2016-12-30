@@ -23,6 +23,20 @@
 #define SERIAL_BUFFER_SZ 200
 #define	JSON_BUFFER_SZ 200
 
+// 4. Payload Data Types
+// byte          = 10
+// char          = 11
+// unsigned char = 12
+// int           = 20
+// unsigned int  = 21
+// word          = 22
+// long          = 40
+// unsigned long = 41
+// float         = 42
+// double        = 43
+// Update for marshalling data in array. Encoding types as bytes
+// Serialized exmaple removing map declaration
+// echo '{"node":"14","meth":2,"type":6,"data":[10,2,41,250445,42,321.45,42,88.45]}' > /dev/ttyLPL 
 
 typedef union {
 	unsigned long 	L;
