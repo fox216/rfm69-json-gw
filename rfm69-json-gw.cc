@@ -229,6 +229,12 @@ void loop() {
 				Serial.println(payloadBuffer[bufferPosition], HEX);
 				#endif
 				
+
+				/*
+					---
+					Note: Consider updating code to use union instead of memcpy
+					---
+				*/
 				// Store current mapping character
 				char thisDataMap = nodeMsg.PayloadDataMap[x];
 
