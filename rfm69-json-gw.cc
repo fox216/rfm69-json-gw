@@ -5,6 +5,12 @@ Change Log
 2016-12-24: Add Serial input
 
 */
+// Encode data from serial port to an RFM69 message
+/*
+// Serialized exmaple removing map declaration
+echo '{"node":"14","meth":2,"type":6,"data":[10,2,41,250445,42,321.45,42,88.45]}' > /dev/ttyLPL			
+
+*/
 #include <ArduinoJson.h>
 #include <RFM69.h>
 #include <SPI.h>
@@ -12,7 +18,7 @@ Change Log
 #include <NodeMsg.h>
 #include <GatewayConf.h>
 // Initialize Radio
-#define DEBUG_SERIAL
+// #define DEBUG_SERIAL
 
 RFM69 radio;
 
@@ -20,9 +26,9 @@ RFM69 radio;
 // SERIAL_BUFFER_SZ & JSON_BUFFER_SZ defined in GatewayConf.h
 
 char SerialBuffer[SERIAL_BUFFER_SZ];
-byte MsgPayloadBuffer[MAX_PAYLOAD_SIZE];
-int MsgPayloadSz = 0;
-byte payloadBuffer[MAX_PAYLOAD_SIZE];
+//byte MsgPayloadBuffer[MAX_PAYLOAD_SIZE];
+// int MsgPayloadSz = 0;
+// byte payloadBuffer[MAX_PAYLOAD_SIZE];
 
 void setup() {
 	// Setup Serial port
@@ -31,8 +37,6 @@ void setup() {
 	while( ! Serial ) {}
 	// //Setup RFM69 Radio
 	radio.initialize(FREQUENCY, NODEID, NETWORKID);
-	// // Wait for Radio to start
-	// //while(! radio) {} // Unknown 
 	// // Setup RFM69 Encryption
 	radio.encrypt(KEY);
 }
@@ -57,24 +61,6 @@ void loop() {
     		return;
   		}
 
-  		// Encode data from serial port to an RFM69 message
-  		/*
-		{
-			"node":123,
-			"meth":2,
-			"type":200,
-			"map":"bbLfiIL",
-			"data":[42,43,999999,175.06,-678,48197,48197000]
-			}
-			// Sample test
-			echo '{"node":"14","meth":2,"type":6,"map":"bLff","data":[2,250445,321.45,88.45]}' > /dev/ttyLPL
-			// Update for marshalling data in array. Encoding types as bytes
-			// Serialized exmaple removing map declaration
-			echo '{"node":"14","meth":2,"type":6,"data":[10,2,41,250445,42,321.45,42,88.45]}' > /dev/ttyLPL			
-
-  		*/
-
-
   		nodeMsg.NodeID = json_in["node"];
   		nodeMsg.Method = json_in["meth"];
   		nodeMsg.TypeID = json_in["type"];
@@ -87,23 +73,21 @@ void loop() {
 		Serial.println(nodeMsg.Method);
 		Serial.print("Type: ");
 		Serial.println(nodeMsg.TypeID);
-		// Serial.print("Map: ");
-		// Serial.println(nodeMsg.PayloadDataMap);
 		#endif
 		int msgPayloadOffset = 0;
 		byte JsonDataElement = 0;
 		bool bufferHit = false;
-		//Serial.print("Data Size = ");
-		//Serial.println(sizeof(json_in["data"][0]));
 		 do {
+		 	// fail test
 		 	bufferHit = false;
 		 	
-		 	// fail test
+  			#ifdef DEBUG
 		 	Serial.print("JsonDataElement = ");
 			Serial.print(JsonDataElement);
 			Serial.print(", Control = ");
 			Serial.println((byte)json_in["data"][JsonDataElement]);
-				 
+			#endif
+
 		 	if (json_in["data"][JsonDataElement] == 10) {
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
 		 		msgPayloadOffset += 1;
@@ -111,53 +95,77 @@ void loop() {
 		 		// JsonDataElement +=1;
 		 		bufferHit = true;
 		 		// Parse Byte
+		 		#ifdef DEBUG
  				Serial.print("Json_Data Byte = ");
 				Serial.println((byte)json_in["data"][JsonDataElement +1]);
+				#endif
 
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement +1];
 		 		msgPayloadOffset += 1;
-		 	} else if (json_in["data"][JsonDataElement] == 20 or json_in["data"][JsonDataElement] == 21 or json_in["data"][JsonDataElement] == 22 ) {
+		 	} else if (
+		 		json_in["data"][JsonDataElement] == 20 or 
+		 		json_in["data"][JsonDataElement] == 21 or 
+		 		json_in["data"][JsonDataElement] == 22 
+		 		) {
 		 		// JsonDataElement +=1;
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
 		 		msgPayloadOffset += 1;
 		 		bufferHit = true;
+		 		#ifdef DEBUG
 		 		Serial.println("Decode Int,Uint,Word = ");
-
+		 		#endif
 		 		if (json_in["data"][JsonDataElement] == 20 ) { 
+		 			#ifdef DEBUG
 		 			Serial.print("Json_Data Int = ");
 					Serial.println((int)json_in["data"][JsonDataElement +1]);
+		 			#endif
 		 			ByteConvert.i = (int)json_in["data"][JsonDataElement +1];
 		 		} else if (json_in["data"][JsonDataElement] == 21 ) { 
+		 			#ifdef DEBUG
 		 			Serial.print("Json_Data UInt = ");
 					Serial.println((unsigned int)json_in["data"][JsonDataElement +1]);
+		 			#endif
 		 			ByteConvert.I = (unsigned int)json_in["data"][JsonDataElement +1];
 		 		} else if (json_in["data"][JsonDataElement] == 22 ) {
+		 			#ifdef DEBUG
 		 			Serial.print("Json_Data word = ");
 					Serial.println((word)json_in["data"][JsonDataElement +1]);
+		 		 	#endif
 		 		 	ByteConvert.w = (word)json_in["data"][JsonDataElement +1];
 		 		}
 		 		for (int x = 0; x < 2; x++) {
 					nodeMsg.MsgPayload[msgPayloadOffset +x] = ByteConvert.b[x];
 				} 		
 				msgPayloadOffset += 2;	
-		 	} else if (json_in["data"][JsonDataElement] == 40 or json_in["data"][JsonDataElement] == 41 or json_in["data"][JsonDataElement] == 42 or json_in["data"][JsonDataElement] == 43 ) {
+		 	} else if (
+		 		json_in["data"][JsonDataElement] == 40 or 
+		 		json_in["data"][JsonDataElement] == 41 or 
+		 		json_in["data"][JsonDataElement] == 42 or 
+		 		json_in["data"][JsonDataElement] == 43 
+		 		) {
 		 		// JsonDataElement +=1;
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
 		 		msgPayloadOffset += 1;
 		 		bufferHit = true;
 		 		if (json_in["data"][JsonDataElement] == 40 ) {
+		 			#ifdef DEBUG
 		 			Serial.print("Json_Data long = ");
-
+		 			#endif
 		 			ByteConvert.l = (long)json_in["data"][JsonDataElement+1];
 		 		} else if (json_in["data"][JsonDataElement] == 41 ) {
+		 			#ifdef DEBUG
 		 			Serial.print("Json_Data ulong = ");
-		 			
+		 			#endif
 		 			ByteConvert.L = (unsigned long)json_in["data"][JsonDataElement+1];
 		 		} else if (json_in["data"][JsonDataElement] == 42 ) {
+		 			#ifdef DEBUG
 		 			Serial.print("Json_Data float = ");
+		 			#endif
 		 			ByteConvert.f = (float)json_in["data"][JsonDataElement +1];
 		 		} else if (json_in["data"][JsonDataElement] == 43 ) {
+		 			#ifdef DEBUG
 		 			Serial.print("Json_Data double = ");
+		 			#endif
 		 			ByteConvert.d = (double)json_in["data"][JsonDataElement+1];
 		 		}
 		 		for (int x = 0; x < 4; x++) {
@@ -168,14 +176,14 @@ void loop() {
 
 		 	// Read onle even numbered json_in["data"] elements
 		 	JsonDataElement += 2;
+		 	#ifdef DEBUG
 		 	Serial.print("msgPayloadOffset: ");
 		 	Serial.print(msgPayloadOffset);
 		 	Serial.println();
+		 	#endif
 
 		 } while (bufferHit);
-		// for (int element = 0; element < sizeof(json_in["data"]); element++) {
-
-
+		// Send network encode message to target
 		radio.send(nodeMsg.NodeID, (const void*)(&nodeMsg), MAX_NETWORK_SIZE);
 		Blink(LED, 10);
 		delay(100);
@@ -211,7 +219,6 @@ void loop() {
 			// Copy contents of node msg into array for processing. 
 			// Note this step could be skipped to save memory later...
 			memcpy(payloadBuffer, &nodeMsg.MsgPayload, MAX_PAYLOAD_SIZE);
-			// payloadBuffer (MsgPayload) array position pointer///
 
 			// Create json data array for storing decoded contents of payload
 			JsonArray& data = json_out.createNestedArray("data");
@@ -219,7 +226,6 @@ void loop() {
 			// Decode types from MsgPayload, add to json array 
 			byte buffPos = 0;
 			bool bufferHit = true;
-
 			do {
 				bufferHit = false;
 				if (nodeMsg.MsgPayload[buffPos] == _byte_ or
@@ -248,7 +254,6 @@ void loop() {
 						data.add(ByteConvert.w);
 					}
 					buffPos +=3;
-					
 				} else if ( 
 					nodeMsg.MsgPayload[buffPos] == _long_ or 
 					nodeMsg.MsgPayload[buffPos] == _ulong_ or 
