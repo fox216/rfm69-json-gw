@@ -17,18 +17,13 @@ echo '{"node":"14","meth":2,"type":6,"data":[10,2,41,250445,42,321.45,42,88.45]}
 // #include <GatewayMsg.h> // Load Gateway Message structure:Task
 #include <NodeMsg.h>
 #include <GatewayConf.h>
-// Initialize Radio
+// Uncomment for debugging 
 // #define DEBUG_SERIAL
-
 RFM69 radio;
-
 // Note:
 // SERIAL_BUFFER_SZ & JSON_BUFFER_SZ defined in GatewayConf.h
-
 char SerialBuffer[SERIAL_BUFFER_SZ];
-//byte MsgPayloadBuffer[MAX_PAYLOAD_SIZE];
-// int MsgPayloadSz = 0;
-// byte payloadBuffer[MAX_PAYLOAD_SIZE];
+
 
 void setup() {
 	// Setup Serial port
@@ -88,7 +83,7 @@ void loop() {
 			Serial.println((byte)json_in["data"][JsonDataElement]);
 			#endif
 
-		 	if (json_in["data"][JsonDataElement] == 10) {
+		 	if (json_in["data"][JsonDataElement] == _byte_) {
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
 		 		msgPayloadOffset += 1;
 
@@ -103,9 +98,9 @@ void loop() {
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement +1];
 		 		msgPayloadOffset += 1;
 		 	} else if (
-		 		json_in["data"][JsonDataElement] == 20 or 
-		 		json_in["data"][JsonDataElement] == 21 or 
-		 		json_in["data"][JsonDataElement] == 22 
+		 		json_in["data"][JsonDataElement] == _int_ or 
+		 		json_in["data"][JsonDataElement] == _uint_ or 
+		 		json_in["data"][JsonDataElement] == _word_ 
 		 		) {
 		 		// JsonDataElement +=1;
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
@@ -114,19 +109,19 @@ void loop() {
 		 		#ifdef DEBUG
 		 		Serial.println("Decode Int,Uint,Word = ");
 		 		#endif
-		 		if (json_in["data"][JsonDataElement] == 20 ) { 
+		 		if (json_in["data"][JsonDataElement] == _int_ ) { 
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data Int = ");
 					Serial.println((int)json_in["data"][JsonDataElement +1]);
 		 			#endif
 		 			ByteConvert.i = (int)json_in["data"][JsonDataElement +1];
-		 		} else if (json_in["data"][JsonDataElement] == 21 ) { 
+		 		} else if (json_in["data"][JsonDataElement] == _uint_ ) { 
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data UInt = ");
 					Serial.println((unsigned int)json_in["data"][JsonDataElement +1]);
 		 			#endif
 		 			ByteConvert.I = (unsigned int)json_in["data"][JsonDataElement +1];
-		 		} else if (json_in["data"][JsonDataElement] == 22 ) {
+		 		} else if (json_in["data"][JsonDataElement] == _word_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data word = ");
 					Serial.println((word)json_in["data"][JsonDataElement +1]);
@@ -138,31 +133,31 @@ void loop() {
 				} 		
 				msgPayloadOffset += 2;	
 		 	} else if (
-		 		json_in["data"][JsonDataElement] == 40 or 
-		 		json_in["data"][JsonDataElement] == 41 or 
-		 		json_in["data"][JsonDataElement] == 42 or 
-		 		json_in["data"][JsonDataElement] == 43 
+		 		json_in["data"][JsonDataElement] == _long_ or 
+		 		json_in["data"][JsonDataElement] == _ulong_ or 
+		 		json_in["data"][JsonDataElement] == _float_ or 
+		 		json_in["data"][JsonDataElement] == _double_ 
 		 		) {
 		 		// JsonDataElement +=1;
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
 		 		msgPayloadOffset += 1;
 		 		bufferHit = true;
-		 		if (json_in["data"][JsonDataElement] == 40 ) {
+		 		if (json_in["data"][JsonDataElement] == _long_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data long = ");
 		 			#endif
 		 			ByteConvert.l = (long)json_in["data"][JsonDataElement+1];
-		 		} else if (json_in["data"][JsonDataElement] == 41 ) {
+		 		} else if (json_in["data"][JsonDataElement] == _ulong_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data ulong = ");
 		 			#endif
 		 			ByteConvert.L = (unsigned long)json_in["data"][JsonDataElement+1];
-		 		} else if (json_in["data"][JsonDataElement] == 42 ) {
+		 		} else if (json_in["data"][JsonDataElement] == _float_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data float = ");
 		 			#endif
 		 			ByteConvert.f = (float)json_in["data"][JsonDataElement +1];
-		 		} else if (json_in["data"][JsonDataElement] == 43 ) {
+		 		} else if (json_in["data"][JsonDataElement] == _double_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data double = ");
 		 			#endif
