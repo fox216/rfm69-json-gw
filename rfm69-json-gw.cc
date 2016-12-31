@@ -187,9 +187,7 @@ void loop() {
 		Serial.println();
 		delay(10);
 		#endif
-  	} 
-  	/*
-  	else {
+  	} else {
   		// Process incoming RFM69 data
   		// Parse RFM69 Message and send to Serial
   		StaticJsonBuffer<JSON_BUFFER_SZ> jsonBuffer;
@@ -208,104 +206,152 @@ void loop() {
 			json_out["node"] = nodeMsg.NodeID;
 			json_out["meth"] = nodeMsg.Method;
 			json_out["type"] = nodeMsg.TypeID;
-			json_out["map"] = nodeMsg.PayloadDataMap;
 
 			// Copy contents of node msg into array for processing. 
 			// Note this step could be skipped to save memory later...
 			memcpy(payloadBuffer, &nodeMsg.MsgPayload, MAX_PAYLOAD_SIZE);
-			
-			// Debug statements
-			#ifdef DEBUG
-			Serial.print("Data Map Size: ");
-			Serial.println( strlen(nodeMsg.PayloadDataMap) );
-			Serial.print("Data Map Value: ");
-			Serial.println( nodeMsg.PayloadDataMap );
-			#endif
-			
 			// payloadBuffer (MsgPayload) array position pointer///
-			int bufferPosition = 0;
 
 			// Create json data array for storing decoded contents of payload
 			JsonArray& data = json_out.createNestedArray("data");
-			for (int x = 0; x < strlen(nodeMsg.PayloadDataMap); x++) {
-				#ifdef DEBUG
-				Serial.print("DataMap[");
-				Serial.print(x);
-				Serial.print("]: ");
-				Serial.println(nodeMsg.DataMap[x]);
-				Serial.print("BufferPosition: ");
-				Serial.println(bufferPosition);
-				Serial.println(payloadBuffer[bufferPosition], HEX);
-				#endif
-				
+			
+			// Decode types from MsgPayload, add to json array 
+			byte buffPos = 0;
+			bool bufferHit = true;
 
-				
-					// ---
-					// Note: Consider updating code to use union instead of memcpy
-					// ---
-				
-				// Store current mapping character
-				char thisDataMap = nodeMsg.PayloadDataMap[x];
-
-				if (thisDataMap == 'b') {
-					data.add((byte)payloadBuffer[bufferPosition]);
-					bufferPosition += 1;
+			do {
+				bufferHit = false;
+				if (nodeMsg.MsgPayload[buffPos] == _byte_ or
+					nodeMsg.MsgPayload[buffPos] == _char_ or
+					nodeMsg.MsgPayload[buffPos] == _uchar_
+					) {
+					bufferHit = true;
+					data.add((byte)nodeMsg.MsgPayload[buffPos +1]);
+					data.add((byte)nodeMsg.MsgPayload[buffPos]);
+					// move buffPos to next MsgDataType control position
+					buffPos =+ 2;
+				} else if (
+					nodeMsg.MsgPayload[buffPos] == _int_ or
+					nodeMsg.MsgPayload[buffPos] == _uint_ or
+					nodeMsg.MsgPayload[buffPos] == _word_
+					) {
+					//byte twoByte[2]; 
+					bufferHit = true;
+					data.add((byte)nodeMsg.MsgPayload[buffPos]);
+					memcpy(ByteConvert.b, &nodeMsg.MsgPayload[buffPos +1], 2);
+					if (nodeMsg.MsgPayload[buffPos] == _int_) {
+						data.add(ByteConvert.i);
+					} else if (nodeMsg.MsgPayload[buffPos] == _uint_) {
+						data.add(ByteConvert.I);
+					} else if (nodeMsg.MsgPayload[buffPos] == _word_) {
+						data.add(ByteConvert.w);
+					}
+					buffPos +=3;
+					
+				} else if ( 
+					nodeMsg.MsgPayload[buffPos] == _long_ or 
+					nodeMsg.MsgPayload[buffPos] == _ulong_ or 
+					nodeMsg.MsgPayload[buffPos] == _float_ or 
+					nodeMsg.MsgPayload[buffPos] == _double_ 
+					) {
+					bufferHit = true;
+					data.add((byte)nodeMsg.MsgPayload[buffPos]);
+					memcpy(ByteConvert.B, &nodeMsg.MsgPayload[buffPos +1], 4);
+					if (nodeMsg.MsgPayload[buffPos] == _long_) {
+						data.add(ByteConvert.l);
+					} else if (nodeMsg.MsgPayload[buffPos] == _ulong_) {
+						data.add(ByteConvert.L);
+					} else if (nodeMsg.MsgPayload[buffPos] == _float_) {
+						data.add(ByteConvert.f);
+					} else if (nodeMsg.MsgPayload[buffPos] == _double_) {
+						data.add(ByteConvert.d);
+					}
+					buffPos +=5;
 				}
-				else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
-					byte fourByte[4];
-					memcpy(fourByte, &payloadBuffer[bufferPosition], 4);
+			} while (bufferHit); 
+			json_out.printTo(Serial);
+			Serial.println();
+			delay(10);
 
-					if (thisDataMap == 'f') {
-						float castFloat;
-						castFloat = * (float *) fourByte;
-						data.add(castFloat);
-					}
-					if (thisDataMap == 'L') {
-						unsigned long castUlong;
-						castUlong = * (unsigned long *) fourByte;
-						data.add(castUlong);
-					}
-					if (thisDataMap == 'l') {
-						long castLong;
-						castLong = * (long *) fourByte;
-						data.add(castLong);
-					}
-					if (thisDataMap == 'd') {
-						double castDouble;
-						castDouble = * (double *) fourByte;
-						data.add(castDouble);
-					}
-					bufferPosition += 4;
-				}
-				else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
-					byte twoByte[2];
-					memcpy(twoByte, &payloadBuffer[bufferPosition], 2);
+			// for (int x = 0; x < strlen(nodeMsg.PayloadDataMap); x++) {
+			// 	#ifdef DEBUG
+			// 	Serial.print("DataMap[");
+			// 	Serial.print(x);
+			// 	Serial.print("]: ");
+			// 	Serial.println(nodeMsg.DataMap[x]);
+			// 	Serial.print("BufferPosition: ");
+			// 	Serial.println(bufferPosition);
+			// 	Serial.println(payloadBuffer[bufferPosition], HEX);
+			// 	#endif
+				
 
-					if (thisDataMap == 'i') {
-						int castInt;
-						castInt = * (int *) twoByte;
-						data.add(castInt);
-					}
-					if (thisDataMap == 'I') {
-						unsigned int castUint;
-						castUint = * (unsigned int *) twoByte;
-						data.add(castUint);
-					}
-					if (thisDataMap == 'w') {
-						word castWord;
-						castWord = * (word *) twoByte;
-						data.add(castWord);
-					}
-					bufferPosition += 2;
-				} else {
-					Serial.print("Undefined: ");
-					Serial.println(nodeMsg.PayloadDataMap[x]);
-				}	
-			}
-		}
+				
+			// 		// ---
+			// 		// Note: Consider updating code to use union instead of memcpy
+			// 		// ---
+				
+			// 	// Store current mapping character
+			// 	char thisDataMap = nodeMsg.PayloadDataMap[x];
+
+			// 	if (thisDataMap == 'b') {
+			// 		data.add((byte)payloadBuffer[bufferPosition]);
+			// 		bufferPosition += 1;
+			// 	}
+			// 	else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
+			// 		byte fourByte[4];
+			// 		memcpy(fourByte, &payloadBuffer[bufferPosition], 4);
+
+			// 		if (thisDataMap == 'f') {
+			// 			float castFloat;
+			// 			castFloat = * (float *) fourByte;
+			// 			data.add(castFloat);
+			// 		}
+			// 		if (thisDataMap == 'L') {
+			// 			unsigned long castUlong;
+			// 			castUlong = * (unsigned long *) fourByte;
+			// 			data.add(castUlong);
+			// 		}
+			// 		if (thisDataMap == 'l') {
+			// 			long castLong;
+			// 			castLong = * (long *) fourByte;
+			// 			data.add(castLong);
+			// 		}
+			// 		if (thisDataMap == 'd') {
+			// 			double castDouble;
+			// 			castDouble = * (double *) fourByte;
+			// 			data.add(castDouble);
+			// 		}
+			// 		bufferPosition += 4;
+			// 	}
+			// 	else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
+			// 		byte twoByte[2];
+			// 		memcpy(twoByte, &payloadBuffer[bufferPosition], 2);
+
+			// 		if (thisDataMap == 'i') {
+			// 			int castInt;
+			// 			castInt = * (int *) twoByte;
+			// 			data.add(castInt);
+			// 		}
+			// 		if (thisDataMap == 'I') {
+			// 			unsigned int castUint;
+			// 			castUint = * (unsigned int *) twoByte;
+			// 			data.add(castUint);
+			// 		}
+			// 		if (thisDataMap == 'w') {
+			// 			word castWord;
+			// 			castWord = * (word *) twoByte;
+			// 			data.add(castWord);
+			// 		}
+			// 		bufferPosition += 2;
+			// 	} else {
+			// 		Serial.print("Undefined: ");
+			// 		Serial.println(nodeMsg.PayloadDataMap[x]);
+			// 	}	
+			// }
+		} // End Radio Receive
 
   	}
-  	*/
+  	
 }
 
 
