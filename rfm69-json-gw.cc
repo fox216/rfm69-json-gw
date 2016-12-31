@@ -3,7 +3,7 @@
 Change Log
 2016-12-23: Test JSON Output
 2016-12-24: Add Serial input
-
+TODO: Modify gatway to read only sent bytes
 */
 // Encode data from serial port to an RFM69 message
 /*
@@ -14,9 +14,10 @@ echo '{"node":"14","meth":2,"type":6,"data":[10,2,41,250445,42,321.45,42,88.45]}
 #include <ArduinoJson.h>
 #include <RFM69.h>
 #include <SPI.h>
+// #include <GatewayMsg.h> // Load Gateway Message structure:Task
 #include <NodeMsg.h>
 #include <GatewayConf.h>
-// Uncomment for debugging 
+// Uncomment for debugging
 // #define DEBUG_SERIAL
 RFM69 radio;
 // Note:
@@ -82,7 +83,7 @@ void loop() {
 			Serial.println((byte)json_in["data"][JsonDataElement]);
 			#endif
 
-		 	if (json_in["data"][JsonDataElement] == _byte_) {
+		 	if ((byte)json_in["data"][JsonDataElement] == _byte_) {
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
 		 		msgPayloadOffset += 1;
 
@@ -97,9 +98,9 @@ void loop() {
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement +1];
 		 		msgPayloadOffset += 1;
 		 	} else if (
-		 		json_in["data"][JsonDataElement] == _int_ or 
-		 		json_in["data"][JsonDataElement] == _uint_ or 
-		 		json_in["data"][JsonDataElement] == _word_ 
+		 		(byte)json_in["data"][JsonDataElement] == _int_ or 
+		 		(byte)json_in["data"][JsonDataElement] == _uint_ or 
+		 		(byte)json_in["data"][JsonDataElement] == _word_ 
 		 		) {
 		 		// JsonDataElement +=1;
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
@@ -108,19 +109,19 @@ void loop() {
 		 		#ifdef DEBUG
 		 		Serial.println("Decode Int,Uint,Word = ");
 		 		#endif
-		 		if (json_in["data"][JsonDataElement] == _int_ ) { 
+		 		if ((byte)json_in["data"][JsonDataElement] == _int_ ) { 
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data Int = ");
 					Serial.println((int)json_in["data"][JsonDataElement +1]);
 		 			#endif
 		 			ByteConvert.i = (int)json_in["data"][JsonDataElement +1];
-		 		} else if (json_in["data"][JsonDataElement] == _uint_ ) { 
+		 		} else if ((byte)json_in["data"][JsonDataElement] == _uint_ ) { 
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data UInt = ");
 					Serial.println((unsigned int)json_in["data"][JsonDataElement +1]);
 		 			#endif
 		 			ByteConvert.I = (unsigned int)json_in["data"][JsonDataElement +1];
-		 		} else if (json_in["data"][JsonDataElement] == _word_ ) {
+		 		} else if ((byte)json_in["data"][JsonDataElement] == _word_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data word = ");
 					Serial.println((word)json_in["data"][JsonDataElement +1]);
@@ -132,31 +133,31 @@ void loop() {
 				} 		
 				msgPayloadOffset += 2;	
 		 	} else if (
-		 		json_in["data"][JsonDataElement] == _long_ or 
-		 		json_in["data"][JsonDataElement] == _ulong_ or 
-		 		json_in["data"][JsonDataElement] == _float_ or 
-		 		json_in["data"][JsonDataElement] == _double_ 
+		 		(byte)json_in["data"][JsonDataElement] == _long_ or 
+		 		(byte)json_in["data"][JsonDataElement] == _ulong_ or 
+		 		(byte)json_in["data"][JsonDataElement] == _float_ or 
+		 		(byte)json_in["data"][JsonDataElement] == _double_ 
 		 		) {
 		 		// JsonDataElement +=1;
 		 		nodeMsg.MsgPayload[msgPayloadOffset] = (byte)json_in["data"][JsonDataElement];
 		 		msgPayloadOffset += 1;
 		 		bufferHit = true;
-		 		if (json_in["data"][JsonDataElement] == _long_ ) {
+		 		if ((byte)json_in["data"][JsonDataElement] == _long_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data long = ");
 		 			#endif
 		 			ByteConvert.l = (long)json_in["data"][JsonDataElement+1];
-		 		} else if (json_in["data"][JsonDataElement] == _ulong_ ) {
+		 		} else if ((byte)json_in["data"][JsonDataElement] == _ulong_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data ulong = ");
 		 			#endif
 		 			ByteConvert.L = (unsigned long)json_in["data"][JsonDataElement+1];
-		 		} else if (json_in["data"][JsonDataElement] == _float_ ) {
+		 		} else if ((byte)json_in["data"][JsonDataElement] == _float_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data float = ");
 		 			#endif
 		 			ByteConvert.f = (float)json_in["data"][JsonDataElement +1];
-		 		} else if (json_in["data"][JsonDataElement] == _double_ ) {
+		 		} else if ((byte)json_in["data"][JsonDataElement] == _double_ ) {
 		 			#ifdef DEBUG
 		 			Serial.print("Json_Data double = ");
 		 			#endif
@@ -209,7 +210,7 @@ void loop() {
 			json_out["node"] = radio.SENDERID;
 			json_out["meth"] = nodeMsg.Method;
 			json_out["type"] = nodeMsg.TypeID;
-
+			json_out["rssi"] = radio.RSSI;
 			// Copy contents of node msg into array for processing. 
 			// Note this step could be skipped to save memory later...
 			// memcpy(payloadBuffer, &nodeMsg.MsgPayload, MAX_PAYLOAD_SIZE);
