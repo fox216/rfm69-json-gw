@@ -49,8 +49,8 @@ void loop() {
   		// Process incoming serial data
   		// Parse json and send to target node
 		Serial.readBytesUntil('\n', SerialBuffer, SERIAL_BUFFER_SZ -1 );
-		StaticJsonBuffer<JSON_BUFFER_SZ> jsonBuffer;
-		JsonObject& json_in = jsonBuffer.parseObject(SerialBuffer);
+		StaticJsonBuffer<JSON_BUFFER_SZ> jsonInBuffer;
+		JsonObject& json_in = jsonInBuffer.parseObject(SerialBuffer);
 		// Raise error if data received can not be parsed into json.
 		if (!json_in.success()) {
     		Serial.println("parseObject() failed");
@@ -203,7 +203,8 @@ void loop() {
 			JsonObject& json_out = jsonBuffer.createObject();
 
 			// Encode Message content tp JSON
-			json_out["node"] = nodeMsg.NodeID;
+			//json_out["node"] = nodeMsg.NodeID;
+			json_out["node"] = radio.SENDERID;
 			json_out["meth"] = nodeMsg.Method;
 			json_out["type"] = nodeMsg.TypeID;
 
@@ -271,87 +272,13 @@ void loop() {
 			} while (bufferHit); 
 			json_out.printTo(Serial);
 			Serial.println();
-			delay(10);
-
-			// for (int x = 0; x < strlen(nodeMsg.PayloadDataMap); x++) {
-			// 	#ifdef DEBUG
-			// 	Serial.print("DataMap[");
-			// 	Serial.print(x);
-			// 	Serial.print("]: ");
-			// 	Serial.println(nodeMsg.DataMap[x]);
-			// 	Serial.print("BufferPosition: ");
-			// 	Serial.println(bufferPosition);
-			// 	Serial.println(payloadBuffer[bufferPosition], HEX);
-			// 	#endif
-				
-
-				
-			// 		// ---
-			// 		// Note: Consider updating code to use union instead of memcpy
-			// 		// ---
-				
-			// 	// Store current mapping character
-			// 	char thisDataMap = nodeMsg.PayloadDataMap[x];
-
-			// 	if (thisDataMap == 'b') {
-			// 		data.add((byte)payloadBuffer[bufferPosition]);
-			// 		bufferPosition += 1;
-			// 	}
-			// 	else if (thisDataMap == 'f' or thisDataMap == 'L' or thisDataMap == 'l' or thisDataMap == 'd') {
-			// 		byte fourByte[4];
-			// 		memcpy(fourByte, &payloadBuffer[bufferPosition], 4);
-
-			// 		if (thisDataMap == 'f') {
-			// 			float castFloat;
-			// 			castFloat = * (float *) fourByte;
-			// 			data.add(castFloat);
-			// 		}
-			// 		if (thisDataMap == 'L') {
-			// 			unsigned long castUlong;
-			// 			castUlong = * (unsigned long *) fourByte;
-			// 			data.add(castUlong);
-			// 		}
-			// 		if (thisDataMap == 'l') {
-			// 			long castLong;
-			// 			castLong = * (long *) fourByte;
-			// 			data.add(castLong);
-			// 		}
-			// 		if (thisDataMap == 'd') {
-			// 			double castDouble;
-			// 			castDouble = * (double *) fourByte;
-			// 			data.add(castDouble);
-			// 		}
-			// 		bufferPosition += 4;
-			// 	}
-			// 	else if (thisDataMap == 'i' or thisDataMap == 'I' or thisDataMap == 'w') {
-			// 		byte twoByte[2];
-			// 		memcpy(twoByte, &payloadBuffer[bufferPosition], 2);
-
-			// 		if (thisDataMap == 'i') {
-			// 			int castInt;
-			// 			castInt = * (int *) twoByte;
-			// 			data.add(castInt);
-			// 		}
-			// 		if (thisDataMap == 'I') {
-			// 			unsigned int castUint;
-			// 			castUint = * (unsigned int *) twoByte;
-			// 			data.add(castUint);
-			// 		}
-			// 		if (thisDataMap == 'w') {
-			// 			word castWord;
-			// 			castWord = * (word *) twoByte;
-			// 			data.add(castWord);
-			// 		}
-			// 		bufferPosition += 2;
-			// 	} else {
-			// 		Serial.print("Undefined: ");
-			// 		Serial.println(nodeMsg.PayloadDataMap[x]);
-			// 	}	
-			// }
+			Blink(LED, 10);
+			delay(100);
+			Blink(LED, 10);
+			delay(100);
+			Blink(LED, 10);
 		} // End Radio Receive
-
   	}
-  	
 }
 
 
