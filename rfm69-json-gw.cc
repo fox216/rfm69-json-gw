@@ -218,7 +218,7 @@ void loop() {
 
 			// Copy contents of node msg into array for processing. 
 			// Note this step could be skipped to save memory later...
-			memcpy(payloadBuffer, &nodeMsg.MsgPayload, MAX_PAYLOAD_SIZE);
+			// memcpy(payloadBuffer, &nodeMsg.MsgPayload, MAX_PAYLOAD_SIZE);
 
 			// Create json data array for storing decoded contents of payload
 			JsonArray& data = json_out.createNestedArray("data");
