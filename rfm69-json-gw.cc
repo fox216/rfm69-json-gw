@@ -14,7 +14,6 @@ echo '{"node":"14","meth":2,"type":6,"data":[10,2,41,250445,42,321.45,42,88.45]}
 #include <ArduinoJson.h>
 #include <RFM69.h>
 #include <SPI.h>
-// #include <GatewayMsg.h> // Load Gateway Message structure:Task
 #include <NodeMsg.h>
 #include <GatewayConf.h>
 // Uncomment for debugging 
