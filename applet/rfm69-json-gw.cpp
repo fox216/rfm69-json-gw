@@ -1,3 +1,6 @@
+#include "Arduino.h"
+void setup();
+void loop();
 //avr-json Proof of Concept tesing using ArduinoJson for Wireless Sensor Network Comminication
 /*
 Change Log
@@ -179,9 +182,9 @@ void loop() {
 
 		 } while (bufferHit);
 		// Send network encode message to target
-		radio.send(nodeMsg.NodeID, (const void*)(&nodeMsg), MSG_HEADER_SZ + msgPayloadOffset);
+		radio.send(nodeMsg.NodeID, (const void*)(&nodeMsg), MAX_NETWORK_SIZE);
 		Blink(LED, 10);
-		delay(50);
+		delay(100);
 		Blink(LED, 10);
 
 		// (DEBUG_SERIAL) Print input received from serial port 

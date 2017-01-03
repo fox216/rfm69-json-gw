@@ -1,0 +1,145 @@
+//NodeRed Flow (Gateway 2 RFM69 Network)
+
+[
+    {
+        "id": "708b9c24.8f7464",
+        "type": "tab",
+        "label": "RFM69-Flow"
+    },
+    {
+        "id": "8abc8d61.75437",
+        "type": "serial-port",
+        "z": "708b9c24.8f7464",
+        "serialport": "/dev/ttyGW2",
+        "serialbaud": "115200",
+        "databits": "8",
+        "parity": "none",
+        "stopbits": "1",
+        "newline": "\\n",
+        "bin": "false",
+        "out": "char",
+        "addchar": false
+    },
+    {
+        "id": "3d2a6c0b.324a54",
+        "type": "mqtt-broker",
+        "z": "708b9c24.8f7464",
+        "broker": "pi09",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "verifyservercert": true,
+        "compatmode": true,
+        "keepalive": "60",
+        "cleansession": true,
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": null,
+        "willPayload": "",
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": null,
+        "birthPayload": ""
+    },
+    {
+        "id": "fa782658.0587d8",
+        "type": "debug",
+        "z": "708b9c24.8f7464",
+        "name": "Serial-Debug",
+        "active": true,
+        "console": "false",
+        "complete": "payload",
+        "x": 533,
+        "y": 21,
+        "wires": []
+    },
+    {
+        "id": "62c793a4.9d386c",
+        "type": "serial in",
+        "z": "708b9c24.8f7464",
+        "name": "rfm69_Serial_IN",
+        "serial": "8abc8d61.75437",
+        "x": 93,
+        "y": 20,
+        "wires": [
+            [
+                "36c0fc7e.45d2a4"
+            ]
+        ]
+    },
+    {
+        "id": "c0f70795.0aa9a8",
+        "type": "http in",
+        "z": "708b9c24.8f7464",
+        "name": "GatewayInput",
+        "url": "/gw",
+        "method": "put",
+        "swaggerDoc": "",
+        "x": 122,
+        "y": 178,
+        "wires": [
+            [
+                "76aefa5f.7c75b4",
+                "d807150a.8298b8"
+            ]
+        ]
+    },
+    {
+        "id": "76aefa5f.7c75b4",
+        "type": "json",
+        "z": "708b9c24.8f7464",
+        "name": "HTTP-2-JSON",
+        "x": 363,
+        "y": 107,
+        "wires": [
+            [
+                "dc8bc55c.478778",
+                "8a88e17a.ccf6b"
+            ]
+        ]
+    },
+    {
+        "id": "dc8bc55c.478778",
+        "type": "debug",
+        "z": "708b9c24.8f7464",
+        "name": "HTTP-Debug",
+        "active": true,
+        "console": "false",
+        "complete": "payload",
+        "x": 616,
+        "y": 178,
+        "wires": []
+    },
+    {
+        "id": "36c0fc7e.45d2a4",
+        "type": "json",
+        "z": "708b9c24.8f7464",
+        "name": "Serial-2-Json",
+        "x": 332,
+        "y": 32,
+        "wires": [
+            [
+                "fa782658.0587d8"
+            ]
+        ]
+    },
+    {
+        "id": "8a88e17a.ccf6b",
+        "type": "serial out",
+        "z": "708b9c24.8f7464",
+        "name": "rfm69_Serial_OUT",
+        "serial": "8abc8d61.75437",
+        "x": 640,
+        "y": 227,
+        "wires": []
+    },
+    {
+        "id": "d807150a.8298b8",
+        "type": "http response",
+        "z": "708b9c24.8f7464",
+        "name": "HTTP_Response",
+        "x": 643,
+        "y": 319,
+        "wires": []
+    }
+]
