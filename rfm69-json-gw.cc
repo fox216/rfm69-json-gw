@@ -229,8 +229,8 @@ void loop() {
 					nodeMsg.MsgPayload[buffPos] == _uchar_
 					) {
 					bufferHit = true;
-					data.add((byte)nodeMsg.MsgPayload[buffPos +1]);
 					data.add((byte)nodeMsg.MsgPayload[buffPos]);
+					data.add((byte)nodeMsg.MsgPayload[buffPos +1]);
 					// move buffPos to next MsgDataType control position
 					buffPos =+ 2;
 				} else if (
