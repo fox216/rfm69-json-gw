@@ -182,9 +182,9 @@ void loop() {
 
 		 } while (bufferHit);
 		// Send network encode message to target
-		radio.send(nodeMsg.NodeID, (const void*)(&nodeMsg), MAX_NETWORK_SIZE);
+		radio.send(nodeMsg.NodeID, (const void*)(&nodeMsg), MSG_HEADER_SZ + msgPayloadOffset);
 		Blink(LED, 10);
-		delay(100);
+		delay(50);
 		Blink(LED, 10);
 
 		// (DEBUG_SERIAL) Print input received from serial port 
@@ -232,10 +232,10 @@ void loop() {
 					nodeMsg.MsgPayload[buffPos] == _uchar_
 					) {
 					bufferHit = true;
-					data.add((byte)nodeMsg.MsgPayload[buffPos +1]);
 					data.add((byte)nodeMsg.MsgPayload[buffPos]);
+					data.add((byte)nodeMsg.MsgPayload[buffPos +1]);
 					// move buffPos to next MsgDataType control position
-					buffPos =+ 2;
+					buffPos += 2;
 				} else if (
 					nodeMsg.MsgPayload[buffPos] == _int_ or
 					nodeMsg.MsgPayload[buffPos] == _uint_ or

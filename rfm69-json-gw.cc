@@ -232,7 +232,7 @@ void loop() {
 					data.add((byte)nodeMsg.MsgPayload[buffPos]);
 					data.add((byte)nodeMsg.MsgPayload[buffPos +1]);
 					// move buffPos to next MsgDataType control position
-					buffPos =+ 2;
+					buffPos += 2;
 				} else if (
 					nodeMsg.MsgPayload[buffPos] == _int_ or
 					nodeMsg.MsgPayload[buffPos] == _uint_ or
